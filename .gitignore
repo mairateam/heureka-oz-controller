@@ -8,3 +8,4 @@ data/local-store.json
 *.tsbuildinfo
 next-env.d.ts
 snapshots-backup-*.json
+logs/

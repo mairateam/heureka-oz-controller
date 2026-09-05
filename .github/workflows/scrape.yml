@@ -1,14 +1,23 @@
-name: Denní scrape Heureky
+name: Scrape Heureky (ručně)
+
+# POZOR: automatický denní běh je schválně vypnutý.
+#
+# Heureka je za Cloudflare, který blokuje datacentrové IP adresy. Z runnerů
+# GitHub Actions dostane scrape 403 na všech obchodech, zatímco ze sítě
+# kanceláře projde. Ověřeno 5. 9. 2026: 20 z 20 obchodů OK z lokálu,
+# 0 z 20 z Actions o pár minut později.
+#
+# Denní scrape proto běží přes Plánovač úloh na firemním počítači
+# (viz README, sekce "Automatický denní scrape").
+#
+# Workflow tu zůstává pro ruční spuštění — kdyby se blokace časem změnila,
+# stačí odkomentovat blok `schedule` níže a ověřit jeden běh.
 
 on:
-  schedule:
-    # 5:00 UTC = 6:00 v zimě / 7:00 v létě pražského času.
-    # Schválně s rezervou před 9:00, kdy chodí slackové hlášení — GitHub
-    # naplánované běhy při zátěži i o desítky minut odsouvá.
-    - cron: "0 5 * * *"
   workflow_dispatch:
+  # schedule:
+  #   - cron: "0 5 * * *"
 
-# Dva běhy najednou by zapsaly do tabulky dvakrát.
 concurrency:
   group: heureka-scrape
   cancel-in-progress: false

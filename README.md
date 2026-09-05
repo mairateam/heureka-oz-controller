@@ -129,6 +129,21 @@ node --env-file=.env.local scripts/import-local.mjs
 Skript je idempotentní — co už v tabulce je, přeskočí, takže se nedá spustit
 dvakrát „omylem". `data/local-store.json` po přenosu zůstává jako záloha.
 
+## Automatický denní scrape
+
+**Z cloudu scrape nefunguje.** Heureka je za Cloudflare, který blokuje
+datacentrové IP adresy. Ověřeno 5. 9. 2026 na GitHub Actions: ze sítě kanceláře
+prošlo 20 z 20 obchodů, z runneru o pár minut později 0 z 20 (všechny HTTP 403).
+Totéž platí pro Vercel a jakýkoli běžný VPS.
+
+Scrape proto musí běžet ze sítě, které Heureka věří — tedy z firemního
+počítače. K tomu slouží `scrape-daily.cmd`: spustí scrape a zapíše výstup
+do `logs/scrape.log`. Registruje se do Plánovače úloh Windows.
+
+Workflow `.github/workflows/scrape.yml` v repozitáři zůstává, ale s vypnutým
+cronem — jde spustit jen ručně. Kdyby Heureka blokaci časem uvolnila, stačí
+odkomentovat blok `schedule` a ověřit jeden běh.
+
 ## Upozornění do Slacku
 
 Naplánovaná úloha na Databy platformě (`task-a3175111afc4`) hlídá tabulku
@@ -159,16 +174,7 @@ Variables**. Lokální JSON fallback na Vercelu nefunguje (filesystem je read-on
 takže Sheet musí být napojený.
 
 Dashboard (čtení ze Sheetu) na Vercelu poběží bez problémů. **Scrape ale ne** —
-ve Vercel funkci není curl a Node `fetch` Cloudflare odmítne. Pro automatické
-denní spouštění se nabízejí tři cesty, od nejjednodušší:
+ve Vercel funkci není curl a Node `fetch` Cloudflare odmítne.
 
-1. **GitHub Actions cron** — ubuntu runner má curl. Workflow jednou denně spustí
-   scrape a zapíše do stejného Sheetu. Vercel pak jen zobrazuje data.
-2. **Windows Task Scheduler na tvém PC** — stejný princip, ale závisí na tom,
-   že je počítač zapnutý.
-3. **Domluvit s Heurekou oficiální API přístup** — nejčistší dlouhodobě,
-   odpadá scraping i Cloudflare.
-
-Až se pro jednu rozhodneme, dodělám k ní runner. Ať to bude kterákoli,
-endpoint `/api/scrape` je pak potřeba chránit sdíleným tajemstvím,
+Endpoint `/api/scrape` je při nasazení potřeba chránit sdíleným tajemstvím,
 aby ho nemohl spustit kdokoli.
