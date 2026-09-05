@@ -9,7 +9,8 @@
     "setup:google": "node scripts/setup-google.mjs",
     "scrape": "node --import tsx --env-file=.env.local scripts/scrape-cli.ts",
     "scrape:ci": "tsx scripts/scrape-cli.ts",
-    "dedupe": "node --import tsx --env-file=.env.local scripts/dedupe-snapshots.ts"
+    "dedupe": "node --import tsx --env-file=.env.local scripts/dedupe-snapshots.ts",
+    "keys": "node --import tsx --env-file=.env.local scripts/find-widget-keys.ts"
   },
   "dependencies": {
     "google-auth-library": "^9.15.1",

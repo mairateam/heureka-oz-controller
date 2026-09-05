@@ -12,6 +12,8 @@ export interface Client {
   logoUrl: string;
   addedAt: string;
   active: boolean;
+  /** Klic widgetu Overeno zakazniky. Kdyz je vyplneny, scrape jde pres nej. */
+  widgetKey: string;
 }
 
 export interface Snapshot {

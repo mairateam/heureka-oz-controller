@@ -1,6 +1,7 @@
 import { scrapeShop, normalizeShopUrl, HeurekaError } from "./heureka";
+import { scrapeWidget } from "./heurekaWidget";
 import { getClients, getSnapshots, saveClients, saveSnapshots } from "./store";
-import type { Client, ClientWithHistory, Snapshot } from "./types";
+import type { Client, ClientWithHistory, ScrapeResult, Snapshot } from "./types";
 
 export function today(): string {
   // Vsechno pocitame v ceskem case, at se datum neprehodi kvuli UTC.
@@ -57,6 +58,7 @@ export async function addClient(inputUrl: string): Promise<Client> {
     logoUrl: scraped.logoUrl,
     addedAt: new Date().toISOString(),
     active: true,
+    widgetKey: "",
   };
 
   await saveClients([...clients, client]);
@@ -104,6 +106,28 @@ export interface ScrapeRunResult {
   details: { clientId: string; name: string; percentage: number | null; error: string }[];
 }
 
+/**
+ * Kdyz mame klic widgetu, jdeme pres nej — ta cesta funguje i z cloudu,
+ * protoze neni za Cloudflare. Bez klice (nebo kdyz widget selze) zbyva
+ * profil obchodu, ktery projde jen ze site, ktere Heureka veri.
+ */
+async function nactiObchod(client: Client): Promise<ScrapeResult> {
+  if (!client.widgetKey) return scrapeShop(client.url);
+
+  try {
+    return await scrapeWidget(
+      client.widgetKey,
+      client.market,
+      client.slug,
+      client.name,
+      client.url,
+      client.logoUrl,
+    );
+  } catch {
+    return scrapeShop(client.url);
+  }
+}
+
 export async function runScrape(): Promise<ScrapeRunResult> {
   const clients = (await getClients()).filter((c) => c.active);
   const stamp = new Date().toISOString();
@@ -118,7 +142,7 @@ export async function runScrape(): Promise<ScrapeRunResult> {
     if (index > 0) await new Promise((resolve) => setTimeout(resolve, 1500));
 
     try {
-      const scraped = await scrapeShop(client.url);
+      const scraped = await nactiObchod(client);
       snapshots.push({
         date,
         clientId: client.id,

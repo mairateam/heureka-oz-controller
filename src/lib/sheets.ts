@@ -14,6 +14,7 @@ const CLIENT_HEADER = [
   "logo_url",
   "added_at",
   "active",
+  "widget_key",
 ];
 
 const SNAPSHOT_HEADER = [
@@ -109,6 +110,7 @@ export async function readClients(): Promise<Client[]> {
       logoUrl: row[5] ?? "",
       addedAt: row[6] ?? "",
       active: (row[7] ?? "TRUE").toUpperCase() !== "FALSE",
+      widgetKey: row[8] ?? "",
     }));
 }
 
@@ -135,6 +137,7 @@ export async function writeClients(clients: Client[]): Promise<void> {
         c.logoUrl,
         c.addedAt,
         c.active ? "TRUE" : "FALSE",
+        c.widgetKey,
       ]),
     },
   });
