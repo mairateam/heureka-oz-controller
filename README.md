@@ -136,16 +136,27 @@ datacentrové IP adresy. Ověřeno 5. 9. 2026 na GitHub Actions: ze sítě kance
 prošlo 20 z 20 obchodů, z runneru o pár minut později 0 z 20 (všechny HTTP 403).
 Totéž platí pro Vercel a jakýkoli běžný VPS.
 
-Scrape proto musí běžet ze sítě, které Heureka věří. Jsou dvě cesty:
+Řešením je **oficiální widget Ověřeno zákazníky** na `/direct/i/`. Ten za bot
+ochranou být nemůže, protože musí fungovat návštěvníkům e-shopů, takže odpoví
+odkudkoli — z GitHub Actions i z Vercelu.
 
-**A) Google Apps Script (`apps-script/Kod.gs`)** — běží na Google infrastruktuře,
-má vlastní denní časovač a do tabulky píše přímo, takže nepotřebuje ani zapnutý
-počítač, ani server, ani service account. Jestli ho Cloudflare pustí, ověří
-funkce `test1Obchod`; návod je v hlavičce souboru. Tohle je preferovaná cesta —
-jako jediná běží i o dovolené.
+Widget potřebuje klíč obchodu (`widget_key` v listu `Clients`):
 
-**B) Plánovač úloh Windows** — `scrape-daily.cmd` spustí scrape a zapíše výstup
-do `logs/scrape.log`. Ověřeně funguje (20 z 20), ale jen když je počítač zapnutý.
+- `npm run keys` ho najde na webech e-shopů, ověří a uloží
+- `npm run key -- "<obchod>" "<klíč>"` doplní ručně klíč z administrace
+  Ověřeno zákazníky u obchodů, které widget na webu nemají
+
+Widget mají jen obchody **s** certifikátem. U ostatních vrací „vypnuto" — a to
+je samo o sobě platná informace, že certifikát není. Klíč se proto ukládá i jim:
+až certifikát získají, widget se zapne a pozná se to i z cloudu.
+
+Obchody bez klíče se čtou z profilu na Heurece, což projde jen z důvěryhodné
+sítě. Pro ně je tu `scrape-daily.cmd` (Plánovač úloh Windows, log v
+`logs/scrape.log`) — nebo prostě tlačítko v dashboardu.
+
+Google Apps Script (`apps-script/Kod.gs`) byl slepá ulička: Google IP jsou
+blokované stejně jako Azure (ověřeno, HTTP 403). Soubor zůstává pro případ,
+že by se to změnilo.
 
 Výpadek na pár dní nic nerozbije: tabulka drží jeden řádek na obchod a den,
 takže po návratu se prostě naváže. V historii zůstane mezera a slackové
@@ -154,6 +165,28 @@ hlášení porovná poslední dva dostupné dny.
 Workflow `.github/workflows/scrape.yml` v repozitáři zůstává, ale s vypnutým
 cronem — jde spustit jen ručně. Kdyby Heureka blokaci časem uvolnila, stačí
 odkomentovat blok `schedule` a ověřit jeden běh.
+
+## Nasazení a přístup
+
+Dashboard běží na <https://heureka-oz-controller.vercel.app>. **Čtení je veřejné** —
+data z Heureky nejsou tajná a kolegové se mají podívat bez přihlašování.
+
+**Úpravy vyžadují heslo** (`ADMIN_PASSWORD`): přidat a odebrat klienta, přerovnat
+dlaždice, spustit kontrolu. Bez něj by je na veřejné adrese mohl spustit kdokoli.
+Nepřihlášený vidí jen tlačítko Přihlásit; heslo drží cookie 30 dní.
+
+Nasazuje se z příkazové řádky:
+
+```bash
+vercel --prod
+```
+
+Automatický deploy při pushi nejde zapnout — Vercel Hobby plán nepodporuje privátní
+repozitáře vlastněné organizací. Buď se nasazuje ručně, nebo je potřeba Pro plán.
+Vercel Hobby navíc v podmínkách zakazuje komerční použití, což firemní nástroj je.
+
+Na Vercelu není `curl`, kterým se stahují profily obchodů. Widget endpointy za
+Cloudflare nejsou, takže tam stačí běžný `fetch` a `fetchHtml` na něj přepne sám.
 
 ## Upozornění do Slacku
 

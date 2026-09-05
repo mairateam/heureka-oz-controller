@@ -9,3 +9,5 @@ data/local-store.json
 next-env.d.ts
 snapshots-backup-*.json
 logs/
+
+.vercel

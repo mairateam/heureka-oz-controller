@@ -1,5 +1,5 @@
 import { scrapeShop, normalizeShopUrl, HeurekaError } from "./heureka";
-import { scrapeWidget } from "./heurekaWidget";
+import { scrapeWidget, WidgetVypnuty } from "./heurekaWidget";
 import { getClients, getSnapshots, saveClients, saveSnapshots } from "./store";
 import type { Client, ClientWithHistory, ScrapeResult, Snapshot } from "./types";
 
@@ -123,8 +123,27 @@ async function nactiObchod(client: Client): Promise<ScrapeResult> {
       client.url,
       client.logoUrl,
     );
-  } catch {
-    return scrapeShop(client.url);
+  } catch (error) {
+    try {
+      return await scrapeShop(client.url);
+    } catch (chybaProfilu) {
+      // Vypnuty widget je platna informace o certifikatu i tehdy, kdyz se
+      // na profil obchodu nedostaneme (z cloudu ho Cloudflare odmita).
+      if (error instanceof WidgetVypnuty) {
+        return {
+          name: client.name,
+          slug: client.slug,
+          market: client.market,
+          url: client.url,
+          logoUrl: client.logoUrl,
+          percentage: null,
+          certificate: "none",
+          rating: null,
+          reviewCount: null,
+        };
+      }
+      throw chybaProfilu;
+    }
   }
 }
 

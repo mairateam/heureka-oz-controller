@@ -17,6 +17,13 @@ import type { Certificate, Market, ScrapeResult } from "./types";
  * se na heureka.sk, jinak prijde odpoved "widget vypnuty".
  */
 
+/** Obchod nema certifikat, takze widget nebezi. Neni to chyba scrapu. */
+export class WidgetVypnuty extends HeurekaError {
+  constructor() {
+    super("Obchod nema certifikat Overeno zakazniky (widget je vypnuty).");
+  }
+}
+
 function host(market: Market): string {
   return market === "cz" ? "www.heureka.cz" : "www.heureka.sk";
 }
@@ -57,9 +64,10 @@ export async function scrapeWidget(
 
   const { certificate, vypnuty } = parsujCertifikat(gjs.body);
   if (vypnuty) {
-    throw new HeurekaError(
-      "Obchod ma widget Overeno zakazniky vypnuty, pres nej data nezjistime.",
-    );
+    // Widget maji jen obchody s certifikatem, takze vypnuty widget sam o sobe
+    // rika, ze certifikat neni. Procenta odtud nezjistime — dopln je profil
+    // obchodu, kdyz na nej z dane site dosahneme.
+    throw new WidgetVypnuty();
   }
 
   // Procento vazeme na vetu vedle nej, at nechytneme font-size z CSS.
