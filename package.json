@@ -11,7 +11,8 @@
     "scrape:ci": "tsx scripts/scrape-cli.ts",
     "dedupe": "node --import tsx --env-file=.env.local scripts/dedupe-snapshots.ts",
     "keys": "node --import tsx --env-file=.env.local scripts/find-widget-keys.ts",
-    "key": "node --import tsx --env-file=.env.local scripts/set-widget-key.ts"
+    "key": "node --import tsx --env-file=.env.local scripts/set-widget-key.ts",
+    "remove": "node --import tsx --env-file=.env.local scripts/remove-clients.ts"
   },
   "dependencies": {
     "google-auth-library": "^9.15.1",

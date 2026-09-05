@@ -11,3 +11,4 @@ snapshots-backup-*.json
 logs/
 
 .vercel
+clients-backup-*.json
