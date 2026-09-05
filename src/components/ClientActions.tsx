@@ -136,3 +136,106 @@ export function ScrapeButton() {
     </div>
   );
 }
+
+/** Dashboard je verejny; upravy odemyka sdilene tymove heslo. */
+export function LoginButton({ prihlasen }: { prihlasen: boolean }) {
+  const router = useRouter();
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const [heslo, setHeslo] = useState("");
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  async function odhlasit() {
+    await fetch("/api/login", { method: "DELETE" });
+    router.refresh();
+  }
+
+  async function prihlasit(event: React.FormEvent) {
+    event.preventDefault();
+    setBusy(true);
+    setError("");
+
+    const response = await fetch("/api/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password: heslo }),
+    });
+
+    if (response.ok) {
+      setHeslo("");
+      dialogRef.current?.close();
+      router.refresh();
+    } else {
+      setError(await readError(response));
+    }
+    setBusy(false);
+  }
+
+  if (prihlasen) {
+    return (
+      <button className="btn btn--quiet" type="button" onClick={odhlasit}>
+        Odhlásit
+      </button>
+    );
+  }
+
+  return (
+    <>
+      <button
+        className="btn btn--ghost"
+        type="button"
+        onClick={() => {
+          setHeslo("");
+          setError("");
+          dialogRef.current?.showModal();
+        }}
+      >
+        Přihlásit
+      </button>
+
+      <dialog
+        ref={dialogRef}
+        className="modal"
+        onClick={(event) => {
+          if (event.target === dialogRef.current && !busy) dialogRef.current?.close();
+        }}
+      >
+        <form onSubmit={prihlasit} style={{ display: "grid", gap: 16 }}>
+          <div>
+            <h2 style={{ fontSize: 18 }}>Přihlášení</h2>
+            <p style={{ color: "var(--muted)", fontSize: 13, margin: "6px 0 0" }}>
+              Prohlížet může kdokoli. Heslo je potřeba jen na úpravy a spuštění kontroly.
+            </p>
+          </div>
+
+          <input
+            className="input"
+            type="password"
+            value={heslo}
+            onChange={(event) => setHeslo(event.target.value)}
+            placeholder="Týmové heslo"
+            aria-label="Heslo"
+            autoFocus
+            required
+          />
+
+          {error ? <p style={{ color: "var(--accent)", fontSize: 13, margin: 0 }}>{error}</p> : null}
+
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+            <button
+              className="btn btn--ghost"
+              type="button"
+              onClick={() => dialogRef.current?.close()}
+              disabled={busy}
+            >
+              Zrušit
+            </button>
+            <button className="btn" type="submit" disabled={busy}>
+              {busy ? "Přihlašuji…" : "Přihlásit"}
+            </button>
+          </div>
+        </form>
+      </dialog>
+    </>
+  );
+}

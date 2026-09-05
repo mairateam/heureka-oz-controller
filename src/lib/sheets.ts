@@ -52,8 +52,14 @@ function client(): { api: sheets_v4.Sheets; spreadsheetId: string } {
   };
 }
 
+// Listy staci overit jednou za beh procesu — jinak by kazda operace
+// utratila tri cteni z minutove kvoty Sheets API.
+let listyOvereny = false;
+
 /** Zalozi chybejici listy a hlavicky, aby stacilo vytvorit prazdnou tabulku. */
 export async function ensureSheets(): Promise<void> {
+  if (listyOvereny) return;
+
   const { api, spreadsheetId } = client();
   const meta = await api.spreadsheets.get({ spreadsheetId });
   const existing = new Set(
@@ -87,6 +93,8 @@ export async function ensureSheets(): Promise<void> {
       });
     }
   }
+
+  listyOvereny = true;
 }
 
 async function readRows(title: string): Promise<string[][]> {

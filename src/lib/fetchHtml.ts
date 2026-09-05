@@ -30,10 +30,31 @@ export interface FetchResult {
   body: string;
 }
 
+/**
+ * Na Vercelu curl neni. Widget endpointy za Cloudflare nejsou, takze tam
+ * staci bezny fetch; profil obchodu odtud stejne neprojde (403), at uz
+ * requestem posle kdokoli.
+ */
+let curlChybi = false;
+
+async function pressFetch(
+  url: string,
+  headers: Record<string, string>,
+): Promise<FetchResult> {
+  const response = await fetch(url, {
+    headers: { "User-Agent": process.env.SCRAPER_USER_AGENT || DEFAULT_USER_AGENT, ...headers },
+    redirect: "follow",
+    cache: "no-store",
+  });
+  return { status: response.status, body: await response.text() };
+}
+
 export async function fetchHtml(
   url: string,
   headers: Record<string, string> = {},
 ): Promise<FetchResult> {
+  if (curlChybi) return pressFetch(url, headers);
+
   const args = [
     "--silent",
     "--show-error",
@@ -44,7 +65,8 @@ export async function fetchHtml(
     "--user-agent",
     process.env.SCRAPER_USER_AGENT || DEFAULT_USER_AGENT,
     "--write-out",
-    `\n${STATUS_MARKER}%{http_code}>>>`,
+    `
+${STATUS_MARKER}%{http_code}>>>`,
   ];
 
   for (const [name, value] of Object.entries(headers)) {
@@ -59,9 +81,8 @@ export async function fetchHtml(
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     if (/ENOENT/.test(message)) {
-      throw new FetchError(
-        "Nenasel jsem curl. Aplikace ho potrebuje ke stazeni stranky z Heureky.",
-      );
+      curlChybi = true;
+      return pressFetch(url, headers);
     }
     throw new FetchError(`Stazeni stranky selhalo: ${message}`);
   }

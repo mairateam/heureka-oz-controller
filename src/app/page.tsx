@@ -1,6 +1,7 @@
 import { getDashboard } from "@/lib/data";
 import { backend } from "@/lib/store";
-import { AddClientButton, ScrapeButton } from "@/components/ClientActions";
+import { AddClientButton, ScrapeButton, LoginButton } from "@/components/ClientActions";
+import { muzeUpravovat } from "@/lib/auth";
 import { ClientGrid } from "@/components/ClientGrid";
 import type { ClientCardData } from "@/lib/types";
 
@@ -18,6 +19,7 @@ function formatDateTime(iso: string): string {
 export default async function DashboardPage() {
   const clients = await getDashboard();
   const usingLocal = backend() === "local";
+  const editovat = await muzeUpravovat();
 
   const lastRun = clients
     .map((c) => c.latest?.scrapedAt ?? "")
@@ -74,8 +76,13 @@ export default async function DashboardPage() {
           </p>
         </div>
         <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
-          <ScrapeButton />
-          <AddClientButton />
+          {editovat ? (
+            <>
+              <ScrapeButton />
+              <AddClientButton />
+            </>
+          ) : null}
+          <LoginButton prihlasen={editovat} />
         </div>
       </div>
 
@@ -87,7 +94,7 @@ export default async function DashboardPage() {
         </div>
       ) : null}
 
-      <ClientGrid clients={cards} />
+      <ClientGrid clients={cards} editovat={editovat} />
     </>
   );
 }

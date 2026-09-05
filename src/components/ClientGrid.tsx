@@ -23,12 +23,23 @@ function formatDateTime(iso: string): string {
   }).format(new Date(iso));
 }
 
-export function ClientGrid({ clients }: { clients: ClientCardData[] }) {
+export function ClientGrid({
+  clients,
+  editovat,
+}: {
+  clients: ClientCardData[];
+  editovat: boolean;
+}) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [items, setItems] = useState(clients);
   const [dragId, setDragId] = useState<string | null>(null);
   const orderDirty = useRef(false);
+
+  // Po odhlaseni nesmi rezim uprav zustat viset.
+  useEffect(() => {
+    if (!editovat) setEditing(false);
+  }, [editovat]);
 
   // Nova data ze serveru prevezmeme, jen kdyz zrovna neprebiha presouvani.
   useEffect(() => {
@@ -91,6 +102,7 @@ export function ClientGrid({ clients }: { clients: ClientCardData[] }) {
         <span style={{ color: "var(--muted)", fontSize: 13 }}>
           {editing ? "Přetáhni dlaždice na požadované pořadí." : ""}
         </span>
+        {editovat ? (
         <button
           className={editing ? "btn" : "btn btn--quiet"}
           type="button"
@@ -102,6 +114,7 @@ export function ClientGrid({ clients }: { clients: ClientCardData[] }) {
         >
           {editing ? "Hotovo" : "•••"}
         </button>
+        ) : null}
       </div>
 
       <div className="tiles">
