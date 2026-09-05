@@ -1,0 +1,36 @@
+name: Denní scrape Heureky
+
+on:
+  schedule:
+    # 5:00 UTC = 6:00 v zimě / 7:00 v létě pražského času.
+    # Schválně s rezervou před 9:00, kdy chodí slackové hlášení — GitHub
+    # naplánované běhy při zátěži i o desítky minut odsouvá.
+    - cron: "0 5 * * *"
+  workflow_dispatch:
+
+# Dva běhy najednou by zapsaly do tabulky dvakrát.
+concurrency:
+  group: heureka-scrape
+  cancel-in-progress: false
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - run: npm ci
+
+      - name: Scrape a zápis do Google Sheetu
+        run: npm run scrape:ci
+        env:
+          GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
+          GOOGLE_SERVICE_ACCOUNT_EMAIL: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_EMAIL }}
+          GOOGLE_PRIVATE_KEY: ${{ secrets.GOOGLE_PRIVATE_KEY }}

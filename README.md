@@ -1,0 +1,174 @@
+# Heureka OZ Controller
+
+Přehled spokojenosti klientů na Heurece CZ a SK. Aplikace si sama stáhne
+z profilu obchodu procento spokojenosti, úroveň certifikátu Ověřeno zákazníky,
+logo a jméno obchodu, a každý běh uloží jako jeden řádek do historie.
+
+## Spuštění
+
+```bash
+npm install
+npm run dev
+```
+
+Dashboard běží na <http://localhost:5009>.
+
+Na ploše je zástupce **Heureka_OZ**, který spustí totéž na jedno kliknutí:
+otevře okno se serverem a po náběhu i prohlížeč. Když už appka běží, druhé
+kliknutí jen otevře prohlížeč — druhý server nezaloží. Zavřením černého okna
+appku vypneš. Spouštěcí skript je [`start.cmd`](start.cmd).
+
+Klienta přidáš tlačítkem **Přidat klienta** vpravo nahoře — vyskočí okno,
+do kterého vložíš odkaz na jeho profil, např. `https://obchody.heureka.cz/notino-cz/`
+nebo `https://obchody.heureka.sk/alza-sk/`. Odkaz stačí zkopírovat z prohlížeče
+v jakékoli podobě, aplikace si ho normalizuje sama.
+
+Obchody **bez certifikátu Ověřeno zákazníky** se řadí na začátek a mají červené
+ohraničení, ať je na první pohled vidět, kde je problém. Uvnitř obou skupin
+(bez certifikátu / s certifikátem) platí pořadí, které si natáhneš ručně.
+
+Tlačítko **•••** nad dlaždicemi přepne přehled do režimu úprav: dlaždice jde
+přetahovat myší do libovolného pořadí a u každé se objeví **Odebrat**. Pořadí
+se ukládá (je to pořadí řádků v listu `Clients`), takže vydrží i po restartu.
+Tlačítkem **Hotovo** se režim ukončí.
+
+Kontrola běží dvěma cestami, obě přes stejný kód:
+
+- **Automaticky** každý den v 5:00 UTC přes GitHub Actions (`.github/workflows/scrape.yml`)
+- **Ručně** tlačítkem **Spustit kontrolu** v dashboardu, nebo `npm run scrape` z příkazové řádky
+
+Obchody se procházejí po jednom s pauzou 1,5 s mezi nimi, ať Heureku nezatěžujeme.
+Když odmítne požadavek (dělá to při rychlejším sledu), zkusí se to ještě dvakrát
+s odstupem 1,5 s a 4 s — bez toho spadl při testech zhruba každý desátý obchod.
+
+## Co se ukládá
+
+| Sloupec | Popis |
+|---|---|
+| `percentage` | % zákazníků, kteří obchod doporučují (dotazník za 90 dní) |
+| `certificate` | `gold` / `blue` / `none` — úroveň Ověřeno zákazníky |
+| `rating` | celková spokojenost 0–5 |
+| `review_count` | počet recenzí |
+| `error` | text chyby, pokud se scrape nepovedl |
+
+`rating` a `review_count` bereme navíc — jsou na stejné stránce zdarma
+a pomáhají poznat, jestli procento kleslo kvůli trendu, nebo jedné recenzi.
+
+Na jeden obchod a den drží tabulka **právě jeden řádek** — opakované spuštění
+ten stávající přepíše, nepřidá nový. Neúspěšný scrape přitom nikdy nepřepíše
+úspěšné měření z téhož dne, takže odpolední výpadek Heureky nesmaže to,
+co ráno prošlo.
+
+Kdyby se v tabulce duplicity přece jen objevily (třeba ruční úpravou), slouží
+k jejich sloučení `npm run dedupe` (s `-- --dry` napřed jen vypíše, co by udělal;
+před zápisem si vždy uloží zálohu do `snapshots-backup-*.json`).
+
+## Jak se data stahují (důležité pro nasazení)
+
+Heureka běží za Cloudflare, který požadavky z Node.js runtime odmítá
+challenge stránkou (HTTP 403, hlavička `cf-mitigated: challenge`) — a to
+bez ohledu na hlavičky. Aplikace proto stahuje stránky systémovým **curl**
+(`src/lib/fetchHtml.ts`), který projde.
+
+Hlásíme se pravdivým User-Agentem s kontaktem:
+
+```
+MAIRA-HeurekaMonitor/1.0 (+https://mairateam.com; kontakt: ondrej.wicherek@mairateam.com)
+```
+
+Nepředstíráme prohlížeč — Cloudflare tenhle UA pouští, blokuje jen výchozí
+`curl/8.9.1` a prázdný UA. Změnit ho jde proměnnou `SCRAPER_USER_AGENT`.
+
+Praktický důsledek: **scrape potřebuje prostředí, kde je curl k dispozici.**
+Lokálně na Windows i na běžném Linuxu to platí. Ve Vercel serverless funkci
+curl není, takže tam `POST /api/scrape` neprojde — viz sekce o nasazení.
+
+## Napojení Google Sheets
+
+Dokud nejsou vyplněné proměnné, aplikace ukládá do `data/local-store.json`
+a dashboard na to upozorní. Napojení Sheetu:
+
+1. Vytvoř prázdnou Google tabulku. Listy `Clients` a `Snapshots` si aplikace
+   založí sama i s hlavičkami.
+2. V [Google Cloud Console](https://console.cloud.google.com) založ projekt,
+   zapni **Google Sheets API** a vytvoř **Service Account**.
+3. U service accountu vytvoř klíč typu JSON a stáhni ho.
+4. V Google tabulce dej **Sdílet** → e-mail service accountu (`...iam.gserviceaccount.com`)
+   → oprávnění **Editor**.
+5. Nech si vyplnit `.env.local` ze staženého JSONu — přepisovat privátní klíč
+   ručně se nevyplácí:
+
+```bash
+npm run setup:google -- "C:\Users\Ondrej\Downloads\klic.json" "<odkaz na tabulku>"
+```
+
+   Skript vypíše e-mail service accountu, který máš nasdílet (krok 4), a existující
+   `.env.local` napřed zazálohuje. Kdybys to chtěl přece jen ručně:
+
+```
+GOOGLE_SHEET_ID=<část URL tabulky mezi /d/ a /edit>
+GOOGLE_SERVICE_ACCOUNT_EMAIL=<client_email z JSONu>
+GOOGLE_PRIVATE_KEY="<private_key z JSONu, i s \n>"
+```
+
+   Klíč patří na jeden řádek v uvozovkách; `\n` uvnitř nech tak, jak jsou v JSONu.
+
+6. Restartuj aplikaci. Upozornění o lokálním úložišti zmizí.
+
+Stažený JSON klíč nikam neposílej a nedávej ho do repozitáře — je to přístup
+do tabulky. `.env.local` i záloha `.env.local.bak` jsou v `.gitignore`.
+
+### Přenos dat z lokálního režimu
+
+Pokud jsi klienty přidával ještě před napojením Sheetu, přeneseš je jedním během:
+
+```bash
+node --env-file=.env.local scripts/import-local.mjs
+```
+
+Skript je idempotentní — co už v tabulce je, přeskočí, takže se nedá spustit
+dvakrát „omylem". `data/local-store.json` po přenosu zůstává jako záloha.
+
+## Upozornění do Slacku
+
+Naplánovaná úloha na Databy platformě (`task-a3175111afc4`) hlídá tabulku
+a v pracovní dny v 9:00 (Europe/Prague) píše do kanálu `#heureka_overeno_zakazniky`.
+
+Nepotřebuje vlastní Slack aplikaci — běží pod Ondřejovým účtem přes integraci,
+která už ve workspace je, takže limit 10 aplikací na free plánu se jí netýká.
+
+Co hlásí, když porovná dva poslední dny u každého obchodu:
+
+- změnu certifikátu (ztráta, zisk, přechod zlatý ↔ modrý)
+- pokles spokojenosti o 2 a více procentních bodů
+
+Ve dnech beze změn pošle `BEZE ZMĚN`.
+
+Dvě věci k údržbě:
+
+- **Úloha porovnává jen to, co v tabulce přibude.** Dokud se scrape spouští ručně,
+  hlásí změny jen mezi dny, kdy někdo zmáčkl tlačítko.
+- **Platnost je 90 dní** — do 4. 12. 2026 je potřeba ji znovu potvrdit,
+  jinak se sama zastaví.
+
+## Nasazení na Vercel
+
+Aplikace je běžná Next.js appka, takže deploy je `vercel` nebo propojení
+Git repozitáře. Stejné tři proměnné nastav v **Project → Settings → Environment
+Variables**. Lokální JSON fallback na Vercelu nefunguje (filesystem je read-only),
+takže Sheet musí být napojený.
+
+Dashboard (čtení ze Sheetu) na Vercelu poběží bez problémů. **Scrape ale ne** —
+ve Vercel funkci není curl a Node `fetch` Cloudflare odmítne. Pro automatické
+denní spouštění se nabízejí tři cesty, od nejjednodušší:
+
+1. **GitHub Actions cron** — ubuntu runner má curl. Workflow jednou denně spustí
+   scrape a zapíše do stejného Sheetu. Vercel pak jen zobrazuje data.
+2. **Windows Task Scheduler na tvém PC** — stejný princip, ale závisí na tom,
+   že je počítač zapnutý.
+3. **Domluvit s Heurekou oficiální API přístup** — nejčistší dlouhodobě,
+   odpadá scraping i Cloudflare.
+
+Až se pro jednu rozhodneme, dodělám k ní runner. Ať to bude kterákoli,
+endpoint `/api/scrape` je pak potřeba chránit sdíleným tajemstvím,
+aby ho nemohl spustit kdokoli.
