@@ -136,9 +136,20 @@ datacentrové IP adresy. Ověřeno 5. 9. 2026 na GitHub Actions: ze sítě kance
 prošlo 20 z 20 obchodů, z runneru o pár minut později 0 z 20 (všechny HTTP 403).
 Totéž platí pro Vercel a jakýkoli běžný VPS.
 
-Scrape proto musí běžet ze sítě, které Heureka věří — tedy z firemního
-počítače. K tomu slouží `scrape-daily.cmd`: spustí scrape a zapíše výstup
-do `logs/scrape.log`. Registruje se do Plánovače úloh Windows.
+Scrape proto musí běžet ze sítě, které Heureka věří. Jsou dvě cesty:
+
+**A) Google Apps Script (`apps-script/Kod.gs`)** — běží na Google infrastruktuře,
+má vlastní denní časovač a do tabulky píše přímo, takže nepotřebuje ani zapnutý
+počítač, ani server, ani service account. Jestli ho Cloudflare pustí, ověří
+funkce `test1Obchod`; návod je v hlavičce souboru. Tohle je preferovaná cesta —
+jako jediná běží i o dovolené.
+
+**B) Plánovač úloh Windows** — `scrape-daily.cmd` spustí scrape a zapíše výstup
+do `logs/scrape.log`. Ověřeně funguje (20 z 20), ale jen když je počítač zapnutý.
+
+Výpadek na pár dní nic nerozbije: tabulka drží jeden řádek na obchod a den,
+takže po návratu se prostě naváže. V historii zůstane mezera a slackové
+hlášení porovná poslední dva dostupné dny.
 
 Workflow `.github/workflows/scrape.yml` v repozitáři zůstává, ale s vypnutým
 cronem — jde spustit jen ručně. Kdyby Heureka blokaci časem uvolnila, stačí
