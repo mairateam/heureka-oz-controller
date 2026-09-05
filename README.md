@@ -146,9 +146,15 @@ Widget potřebuje klíč obchodu (`widget_key` v listu `Clients`):
 - `npm run key -- "<obchod>" "<klíč>"` doplní ručně klíč z administrace
   Ověřeno zákazníky u obchodů, které widget na webu nemají
 
-Widget mají jen obchody **s** certifikátem. U ostatních vrací „vypnuto" — a to
-je samo o sobě platná informace, že certifikát není. Klíč se proto ukládá i jim:
-až certifikát získají, widget se zapne a pozná se to i z cloudu.
+Widget funguje i pro obchody **bez** certifikátu — vrátí procenta a recenze,
+jen v něm chybí zmínka o certifikátu. Podle toho se pozná úroveň:
+
+- žádná zmínka o certifikátu → `none`
+- zmínka + příznak `goldTab` ve widget skriptu → `gold`
+- zmínka bez `goldTab` → `blue`
+
+U některých klíčů vrací widget prázdnou odpověď (Kulina, Flamaro.sk); ty se
+čtou z profilu obchodu.
 
 Obchody bez klíče se čtou z profilu na Heurece, což projde jen z důvěryhodné
 sítě. Pro ně je tu `scrape-daily.cmd` (Plánovač úloh Windows, log v

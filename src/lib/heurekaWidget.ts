@@ -17,10 +17,10 @@ import type { Certificate, Market, ScrapeResult } from "./types";
  * se na heureka.sk, jinak prijde odpoved "widget vypnuty".
  */
 
-/** Obchod nema certifikat, takze widget nebezi. Neni to chyba scrapu. */
-export class WidgetVypnuty extends HeurekaError {
+/** Widget k tomuhle klici nic nevraci — data je potreba vzit z profilu obchodu. */
+export class WidgetNedostupny extends HeurekaError {
   constructor() {
-    super("Obchod nema certifikat Overeno zakazniky (widget je vypnuty).");
+    super("Widget k tomuhle klici nevraci zadna data.");
   }
 }
 
@@ -28,10 +28,13 @@ function host(market: Market): string {
   return market === "cz" ? "www.heureka.cz" : "www.heureka.sk";
 }
 
-function parsujCertifikat(gjs: string): { certificate: Certificate; vypnuty: boolean } {
-  // Vypnuty widget vraci jen kratke "var dwdgt = true;" bez zbytku skriptu.
-  if (gjs.trim().length < 100) return { certificate: "none", vypnuty: true };
-  return { certificate: /var\s+goldTab\s*=\s*true/.test(gjs) ? "gold" : "blue", vypnuty: false };
+/**
+ * Uroven certifikatu: obchod bez nej nema ve widgetu o certifikatu ani zminku,
+ * zlaty od modreho odlisi priznak goldTab z widget skriptu.
+ */
+function parsujCertifikat(widgetHtml: string, gjs: string): Certificate {
+  if (!/certifik/i.test(widgetHtml)) return "none";
+  return /var\s+goldTab\s*=\s*true/.test(gjs) ? "gold" : "blue";
 }
 
 function cislo(value: string | undefined): number | null {
@@ -56,19 +59,14 @@ export async function scrapeWidget(
     fetchHtml(`${base}/gjs.php?n=wdgt&sak=${encodeURIComponent(widgetKey)}`, headers),
   ]);
 
-  if (widget.status !== 200 || gjs.status !== 200) {
-    throw new HeurekaError(
-      `Widget odpovedel HTTP ${widget.status !== 200 ? widget.status : gjs.status}.`,
-    );
+  if (widget.status !== 200) {
+    throw new HeurekaError(`Widget odpovedel HTTP ${widget.status}.`);
   }
 
-  const { certificate, vypnuty } = parsujCertifikat(gjs.body);
-  if (vypnuty) {
-    // Widget maji jen obchody s certifikatem, takze vypnuty widget sam o sobe
-    // rika, ze certifikat neni. Procenta odtud nezjistime — dopln je profil
-    // obchodu, kdyz na nej z dane site dosahneme.
-    throw new WidgetVypnuty();
-  }
+  // Nektere klice vraci prazdnou odpoved — pak se data musi vzit z profilu.
+  if (widget.body.trim().length === 0) throw new WidgetNedostupny();
+
+  const certificate = parsujCertifikat(widget.body, gjs.body);
 
   // Procento vazeme na vetu vedle nej, at nechytneme font-size z CSS.
   const percentage = cislo(

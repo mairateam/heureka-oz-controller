@@ -7,7 +7,7 @@
  * Klic se pred ulozenim overi — vypnuty widget nebo klic z jineho trhu
  * se do tabulky nedostane.
  */
-import { scrapeWidget, WidgetVypnuty } from "../src/lib/heurekaWidget";
+import { scrapeWidget, WidgetNedostupny } from "../src/lib/heurekaWidget";
 import { getClients, saveClients } from "../src/lib/store";
 
 async function main(): Promise<void> {
@@ -52,15 +52,15 @@ async function main(): Promise<void> {
       `  OK — ${data.percentage} %, ${data.certificate}, ${data.reviewCount ?? "?"} recenzi`,
     );
   } catch (error) {
-    if (!(error instanceof WidgetVypnuty)) {
+    if (!(error instanceof WidgetNedostupny)) {
       console.error(`  NEFUNGUJE — ${error instanceof Error ? error.message : error}`);
       console.error("  Klic jsem neulozil.");
       process.exit(1);
     }
     // Klic si necháme — az obchod certifikat ziska, widget se zapne
     // a my se to dozvime i z cloudu.
-    console.log("  Obchod zatim nema certifikat, widget je vypnuty.");
-    console.log("  Klic presto ulozim — pozna se podle nej, az certifikat ziska.");
+    console.log("  Widget k tomuhle klici zatim nic nevraci.");
+    console.log("  Klic presto ulozim — az zacne odpovidat, pozna se to.");
   }
 
   await saveClients(clients.map((c) => (c.id === client.id ? { ...c, widgetKey: klic } : c)));
