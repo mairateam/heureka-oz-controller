@@ -1,22 +1,19 @@
-name: Scrape Heureky (ručně)
+name: Denní scrape Heureky
 
-# POZOR: automatický denní běh je schválně vypnutý.
+# Projdou jen obchody, které mají vyplněný widget_key — ty se čtou přes
+# oficiální widget Ověřeno zákazníky, který za Cloudflare není.
 #
-# Heureka je za Cloudflare, který blokuje datacentrové IP adresy. Z runnerů
-# GitHub Actions dostane scrape 403 na všech obchodech, zatímco ze sítě
-# kanceláře projde. Ověřeno 5. 9. 2026: 20 z 20 obchodů OK z lokálu,
-# 0 z 20 z Actions o pár minut později.
-#
-# Denní scrape proto běží přes Plánovač úloh na firemním počítači
-# (viz README, sekce "Automatický denní scrape").
-#
-# Workflow tu zůstává pro ruční spuštění — kdyby se blokace časem změnila,
-# stačí odkomentovat blok `schedule` níže a ověřit jeden běh.
+# Obchody bez klíče tady dostanou 403 (Cloudflare blokuje datacentrové IP)
+# a zapíše se jim řádek s chybou. Ten ale přepíše první úspěšný scrape
+# z kanceláře, takže data nekazí. Chybějící klíče doplní `npm run keys`
+# nebo se berou z administrace Ověřeno zákazníky.
 
 on:
+  schedule:
+    # 5:00 UTC = 6:00 v zimě / 7:00 v létě. S rezervou před 9:00, kdy chodí
+    # slackové hlášení — GitHub naplánované běhy při zátěži odsouvá.
+    - cron: "0 5 * * *"
   workflow_dispatch:
-  # schedule:
-  #   - cron: "0 5 * * *"
 
 concurrency:
   group: heureka-scrape
