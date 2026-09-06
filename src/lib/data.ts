@@ -141,7 +141,11 @@ export async function runScrape(): Promise<ScrapeRunResult> {
 
   for (const [index, client] of clients.entries()) {
     // Heureku nezahlcujeme — jdeme sekvencne s pauzou mezi obchody.
-    if (index > 0) await new Promise((resolve) => setTimeout(resolve, 1500));
+    // U widgetu staci kratsi: ten endpoint obsluhuje bezny provoz e-shopu,
+    // kdezto profil obchodu je citlivy a Cloudflare ho hlida.
+    if (index > 0) {
+      await new Promise((resolve) => setTimeout(resolve, client.widgetKey ? 500 : 1500));
+    }
 
     try {
       const scraped = await nactiObchod(client);
