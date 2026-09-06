@@ -34,8 +34,18 @@ Tlačítkem **Hotovo** se režim ukončí.
 
 Kontrola běží dvěma cestami, obě přes stejný kód:
 
-- **Automaticky** každý den v 5:00 UTC přes GitHub Actions (`.github/workflows/scrape.yml`)
-- **Ručně** tlačítkem **Spustit kontrolu** v dashboardu, nebo `npm run scrape` z příkazové řádky
+- **Automaticky** přes GitHub Actions (`.github/workflows/scrape.yml`), dva pokusy
+  denně: 4:41 a 7:17 UTC
+- **Ručně** tlačítkem **Spustit kontrolu** v dashboardu, nebo `npm run scrape`
+  z příkazové řádky
+
+Proč dva pokusy: GitHub naplánované běhy negarantuje. 6. 9. 2026 cron nastavený
+na „0 5" nespustil vůbec. Časy jsou proto mimo celou hodinu, kdy je největší
+nával, a druhý běh dožene ten první. Oba míří na stejný řádek dne.
+
+**Scrape nemůže běžet na Vercelu.** Ve funkci není `curl` a Node `fetch`
+Cloudflare odmítá i na widget endpointech (ověřeno 6. 9. 2026: z Vercelu 0 z 16,
+ze stejného kódu na GitHub Actions 16 z 16). Vercel tedy jen zobrazuje data.
 
 Obchody se procházejí po jednom s pauzou 1,5 s mezi nimi, ať Heureku nezatěžujeme.
 Když odmítne požadavek (dělá to při rychlejším sledu), zkusí se to ještě dvakrát
